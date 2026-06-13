@@ -1,0 +1,16 @@
+{
+  "name": "civic-mirror-download-openstates",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "download": "tsx download.ts",
+    "download:dry": "tsx download.ts --dry-run"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.7"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.3",
+    "typescript": "^5.8.3"
+  }
+}

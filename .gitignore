@@ -25,6 +25,7 @@
 .npm-cache
 scripts/**/node_modules
 scripts/**/.env
+data/openstates/
 *.pem
 
 # debug

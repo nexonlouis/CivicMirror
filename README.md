@@ -152,6 +152,19 @@ See [scripts/tag-bills/README.md](scripts/tag-bills/README.md) for dry-run expla
 
 **Design doc:** [docs/design/congress-vote-ingestion.md](docs/design/congress-vote-ingestion.md)
 
+## State legislation pipeline (in progress)
+
+State roll-call votes and reflection scoring use **Open States bulk CSV** data. Work is on branch `feature/state-legislation`.
+
+```bash
+cd scripts/download-openstates
+cp config.example.env .env   # OPENSTATES_PLURAL_API_KEY
+npm install
+npm run download -- --state FL --year 2026
+```
+
+See [docs/design/state-legislation.md](docs/design/state-legislation.md) and [scripts/download-openstates/README.md](scripts/download-openstates/README.md). Ingest and dashboard integration are not yet implemented.
+
 ## Reflection score
 
 The dashboard compares your official's roll-call votes to your stated priorities:
@@ -273,8 +286,10 @@ Procedural votes are stored but **excluded from reflection scoring** by default 
 ## Project layout
 
 ```
-docs/design/                 Design notes (congress ingestion)
+docs/design/                 Design notes (congress + state ingestion)
+data/openstates/             Cached Open States bulk downloads (gitignored)
 public/logo.jpg              App logo + favicon (src/app/icon.jpg)
+scripts/download-openstates/ Open States session CSV + people download
 scripts/ingest-congress/     unitedstates JSON → Supabase upsert
 scripts/tag-bills/           Bill issue_slugs (subject map + Ollama)
 src/app/api/                 Next.js API routes
