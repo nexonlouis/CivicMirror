@@ -80,6 +80,7 @@ For **live official lookup** (recommended):
    | `006_vote_scoring_relevant.sql` | Filter procedural votes from scoring |
    | `007_member_votes_bill_summary.sql` | Bill summary on enriched vote view |
    | `008_user_reflection_overrides.sql` | Per-bill alignment overrides (signed-in users) |
+   | `009_state_legislation.sql` | State bills, votes, legislators (Open States ingest) |
 
 3. Enable Email auth under Authentication → Providers.
 
@@ -163,7 +164,18 @@ npm install
 npm run download -- --state FL --year 2026
 ```
 
-See [docs/design/state-legislation.md](docs/design/state-legislation.md) and [scripts/download-openstates/README.md](scripts/download-openstates/README.md). Ingest and dashboard integration are not yet implemented.
+See [docs/design/state-legislation.md](docs/design/state-legislation.md) and [scripts/download-openstates/README.md](scripts/download-openstates/README.md).
+
+**Ingest** (after migration `009`):
+
+```bash
+cd scripts/ingest-state
+cp config.example.env .env
+npm install
+npm run ingest -- --state FL --year 2026
+```
+
+Tagging, API, and dashboard integration are next.
 
 ## Reflection score
 
@@ -290,6 +302,7 @@ docs/design/                 Design notes (congress + state ingestion)
 data/openstates/             Cached Open States bulk downloads (gitignored)
 public/logo.jpg              App logo + favicon (src/app/icon.jpg)
 scripts/download-openstates/ Open States session CSV + people download
+scripts/ingest-state/         Open States CSV → Supabase state_* tables
 scripts/ingest-congress/     unitedstates JSON → Supabase upsert
 scripts/tag-bills/           Bill issue_slugs (subject map + Ollama)
 src/app/api/                 Next.js API routes
@@ -302,7 +315,7 @@ src/lib/constants/           Issue tag catalog + pro/anti graph
 src/lib/external/            Census geocoder, Congress.gov, Geocodio, CIV.IQ
 src/lib/legislation/         Scoring, dedupe, bill display, vote-scoring filter
 src/lib/reflection/          Alignment overrides + UI helpers
-supabase/migrations/         SQL schema (001–008)
+supabase/migrations/         SQL schema (001–009)
 ```
 
 ## Roadmap

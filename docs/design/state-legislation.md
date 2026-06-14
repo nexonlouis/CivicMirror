@@ -112,10 +112,10 @@ Do **not** use 2018 boundary GeoJSON for point-in-polygon in MVP.
 
 | Phase | Deliverable | Status |
 |-------|-------------|--------|
-| 0 | Branch + design doc + download script | **In progress** |
-| 1 | `scripts/download-openstates` | **In progress** |
-| 2 | Migration `009_state_legislation.sql` | Pending |
-| 3 | `scripts/ingest-state` | Pending |
+| 0 | Branch + design doc + download script | **Done** |
+| 1 | `scripts/download-openstates` | **Done** |
+| 2 | Migration `009_state_legislation.sql` | **Done** (apply in Supabase) |
+| 3 | `scripts/ingest-state` | **Done** |
 | 4 | `scripts/tag-state-bills` | Pending |
 | 5 | Lookup (`people.geo`) + onboarding save | Pending |
 | 6 | `member-votes-db` + `/api/reflection-score` | Pending |
