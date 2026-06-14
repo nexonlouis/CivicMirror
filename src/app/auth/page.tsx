@@ -31,6 +31,8 @@ function AuthForm() {
       body: JSON.stringify({
         congressionalDistrict: draft.lookup.congressionalDistrict,
         state: draft.lookup.state,
+        stateHouseDistrict: draft.lookup.stateHouseDistrict ?? null,
+        stateSenateDistrict: draft.lookup.stateSenateDistrict ?? null,
         ocdDivisionId: draft.lookup.ocdDivisionId,
         lookupZip: draft.lookup.lookupZip,
         representatives: draft.lookup.representatives,

@@ -41,19 +41,62 @@ export async function assertOllamaModel(config: OllamaConfig): Promise<void> {
   }
 }
 
-function buildSystemPrompt(): string {
-  const slugList = ALLOWED_ISSUE_SLUGS.map((s) => `- ${s}`).join("\n");
+function slugListBlock(): string {
+  return ALLOWED_ISSUE_SLUGS.map((s) => `- ${s}`).join("\n");
+}
+
+/**
+ * Congressional bill system prompt: return [] only for clearly procedural bills;
+ * substantive bills must get the best available slug(s) from the catalog.
+ */
+export function buildFederalOllamaSystemPrompt(): string {
   return `You classify U.S. congressional bills into CivicMirror issue tags for civic engagement scoring.
 
 Allowed issue_slugs (use ONLY these exact strings):
-${slugList}
+${slugListBlock()}
 
-Rules:
-- Return JSON only: {"issue_slugs":["slug1"]}
-- Pick 0 to 3 tags that best match the bill's substantive policy area
-- Return {"issue_slugs":[]} for purely procedural bills (rules, previous question, discharge motions with no policy topic)
+Step 1 — Decide bill type:
+A) PROCEDURAL → return {"issue_slugs":[]}
+B) SUBSTANTIVE → return 1 to 3 slugs from the allowed list (never empty)
+
+PROCEDURAL (return empty) — no broad policy issue for voters to align on:
+- Chamber rules, previous question, motion to recommit, discharge, or calendar procedure only
+- Pure adjournment, recess, joint session, or housekeeping resolutions
+- Omnibus appropriations / continuing resolution / debt-limit vehicle with no distinct policy topic
+- Naming post offices, congressional gold medals, commemorative or purely honorary resolutions
+- Technical corrections, conforming amendments, or codification with no policy change
+- Vote stubs where roll-call context is only procedural (e.g. "On Ordering the Previous Question")
+
+SUBSTANTIVE (must tag) — changes federal law or policy voters might care about:
+- You MUST return at least 1 issue_slug. Pick the closest allowed slug even if imperfect.
+- Use up to 3 tags when multiple areas clearly apply.
+
+Helpful mappings when the fit is indirect:
+- Defense, military, NDAA, homeland security → national-security
+- Immigration, border, asylum, interior enforcement → border-security
+- Income/corporate tax, tariffs, IRS → tax-relief
+- Medicare, Medicaid, ACA, FDA, drug pricing → healthcare
+- Abortion, contraception, reproductive health → reproductive-rights
+- Firearms legislation → gun-rights or gun-regulation (match bill direction)
+- Climate, EPA, clean energy, conservation → climate-environment
+- Highways, broadband, water projects, transit → infrastructure-transportation
+- Ukraine, NATO, foreign aid, treaties, war powers → foreign-policy
+- Voting rights, discrimination, civil liberties → civil-rights
+- K-12 → public-schools; higher ed / student aid → student-loans
+- Policing, sentencing, prisons → criminal-justice-reform or crime-prevention
+- AI, privacy, social media, data → tech-regulation or science-technology
+- Farm bill, agriculture subsidies → agriculture
+- Regulatory rollback / SEC / CFPB deregulation → deregulation
+- Labor, unions, minimum wage, OSHA → jobs-labor-rights
+- Housing, rent, homelessness → housing-affordability
+- Social Security, SNAP, welfare → reducing-poverty
+- Small business lending / SBA → small-business
+- Spending cuts, deficit, fiscal commissions → less-government-spending
+
+Output:
+- JSON only: {"issue_slugs":["slug1"]} or {"issue_slugs":[]}
 - Do not invent slugs outside the allowed list
-- Prefer substantive policy over procedural framing`;
+- When substantive, never return an empty list — choose the best available match`;
 }
 
 export function buildOllamaUserPrompt(bill: BillRow, voteContext: string | null): string {
@@ -107,10 +150,12 @@ export async function tagBillWithOllamaDetailed(
   bill: BillRow,
   voteContext: string | null,
   config: OllamaConfig,
+  options?: { systemPrompt?: string },
 ): Promise<OllamaTagResult> {
   const userPrompt = buildOllamaUserPrompt(bill, voteContext);
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), config.timeoutMs);
+  const systemContent = options?.systemPrompt ?? buildFederalOllamaSystemPrompt();
 
   try {
     const res = await fetch(`${config.baseUrl}/api/chat`, {
@@ -123,7 +168,7 @@ export async function tagBillWithOllamaDetailed(
         format: "json",
         options: { temperature: 0.1 },
         messages: [
-          { role: "system", content: buildSystemPrompt() },
+          { role: "system", content: systemContent },
           { role: "user", content: userPrompt },
         ],
       }),

@@ -13,6 +13,7 @@ import {
 } from "./lib/bills-query.js";
 import {
   assertOllamaModel,
+  buildFederalOllamaSystemPrompt,
   resolveOllamaConfig,
   sleep,
   tagBillWithOllamaDetailed,
@@ -87,7 +88,9 @@ async function main() {
     const context = voteContext.get(bill.bill_id) ?? null;
 
     try {
-      const result = await tagBillWithOllamaDetailed(bill, context, config);
+      const result = await tagBillWithOllamaDetailed(bill, context, config, {
+        systemPrompt: buildFederalOllamaSystemPrompt(),
+      });
 
       if (explain) {
         printOllamaReport(bill.bill_id, result, config.model);

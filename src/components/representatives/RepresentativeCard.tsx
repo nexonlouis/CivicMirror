@@ -6,7 +6,11 @@ export function RepresentativeCard({ rep }: { rep: Representative }) {
       ? "U.S. Representative"
       : rep.chamber === "senate"
         ? "U.S. Senator"
-        : "State Legislator";
+        : rep.stateLegislativeChamber === "upper"
+          ? "State Senator"
+          : rep.stateLegislativeChamber === "lower"
+            ? "State Representative"
+            : "State Legislator";
 
   return (
     <div className="flex gap-4 rounded-xl border border-slate-200 p-4 dark:border-slate-700">

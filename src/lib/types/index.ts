@@ -6,8 +6,12 @@ export type Chamber = "house" | "senate" | "state";
 
 export interface Representative {
   bioguideId: string;
+  /** Open States ocd-person id for state legislators. */
+  personId?: string | null;
   fullName: string;
   chamber: Chamber;
+  /** State House (lower) or Senate (upper) when chamber is "state". */
+  stateLegislativeChamber?: "lower" | "upper" | null;
   party: string | null;
   photoUrl: string | null;
   state: string;
@@ -19,10 +23,14 @@ export interface Representative {
 export interface DistrictLookupResult {
   congressionalDistrict: string;
   state: string;
+  stateHouseDistrict?: string | null;
+  stateSenateDistrict?: string | null;
   ocdDivisionId: string | null;
   lookupZip: string | null;
   representatives: Representative[];
   source: "geocodio" | "civiq" | "congress.gov" | "demo";
+  /** True when state legislators were appended via Open States people.geo */
+  stateLegislatorsIncluded?: boolean;
 }
 
 export interface DemographicsInput {

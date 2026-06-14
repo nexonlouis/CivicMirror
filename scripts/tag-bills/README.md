@@ -74,6 +74,8 @@ npm run tag:ollama
 npx tsx ollama-tag.ts --force --delay-ms=250
 ```
 
+The Ollama prompt requires at least one tag for **substantive** bills (best available slug) and returns empty only for clearly procedural bills (rules, previous question, omnibus appropriations, commemorative resolutions, etc.).
+
 | Flag | Scripts | Purpose |
 |------|---------|---------|
 | `--dry-run` | both | Preview; shows full explain output |

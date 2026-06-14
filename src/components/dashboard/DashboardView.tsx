@@ -64,8 +64,12 @@ export function DashboardView() {
           if (savedReps?.length) {
             loadedReps = savedReps.map((r) => ({
               bioguideId: r.bioguide_id,
+              personId: r.person_id,
               fullName: r.full_name,
               chamber: r.chamber as Representative["chamber"],
+              stateLegislativeChamber:
+                (r.state_legislative_chamber as Representative["stateLegislativeChamber"]) ??
+                null,
               party: r.party,
               photoUrl: r.photo_url,
               state: r.state,

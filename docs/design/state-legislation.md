@@ -46,20 +46,21 @@ Federal schema assumes Bioguide IDs, `congress` integer, and `house`/`senate` ch
 
 ```
 ┌──────────────────────────┐     ┌─────────────────────────┐     ┌──────────────────┐
-│ scripts/download-openstates│     │ scripts/ingest-state     │     │ Supabase          │
-│ API → session zip URLs    │────▶│ CSV normalize + upsert   │────▶│ state_bills       │
-│ + people/current/{ST}.csv │     │ (future)                 │     │ state_roll_call_* │
-└──────────────────────────┘     └─────────────────────────┘     └─────────┬────────┘
-                                                                            │
-┌──────────────────────────┐     ┌─────────────────────────┐              │
-│ Census geocoder → lat/lng │     │ scripts/tag-state-bills  │              │
-│ + API people.geo          │     │ (future)                 │              │
-└──────────────────────────┘     └─────────────────────────┘              │
-                                                                            ▼
-                                                                  ┌──────────────────┐
-                                                                  │ reflection-score │
-                                                                  │ + dashboard tabs │
-                                                                  └──────────────────┘
+│ scripts/download-openstates│   │ scripts/ingest-state     │     │ Supabase          │
+│ API → session zip URLs    │──▶│ CSV normalize + upsert   │────▶│ state_bills       │
+│ + people/current.json     │   └─────────────────────────┘     │ state_roll_call_* │
+└──────────────────────────┘                                   └─────────┬────────┘
+                                                                          │
+                               ┌─────────────────────────┐              │
+                               │ scripts/tag-state-bills  │──────────────┤
+                               │ subjects + title keywords│              │
+                               └─────────────────────────┘              │
+┌──────────────────────────┐                                             │
+│ Census geocoder → lat/lng │                                            ▼
+│ + API people.geo          │                                  ┌──────────────────┐
+└──────────────────────────┘                                  │ reflection-score │
+                                                              │ + dashboard tabs │
+                                                              └──────────────────┘
 ```
 
 ## ID conventions (planned)
@@ -118,10 +119,10 @@ Do **not** use 2018 boundary GeoJSON for point-in-polygon in MVP.
 | 1 | `scripts/download-openstates` | **Done** |
 | 2 | Migration `009_state_legislation.sql` | **Done** (apply in Supabase) |
 | 3 | `scripts/ingest-state` | **Done** |
-| 4 | `scripts/tag-state-bills` | Pending |
-| 5 | Lookup (`people.geo`) + onboarding save | Pending |
-| 6 | `member-votes-db` + `/api/reflection-score` | Pending |
-| 7 | Dashboard state House/Senate tabs | Pending |
+| 4 | `scripts/tag-state-bills` | **Done** |
+| 5 | Lookup (`people.geo`) + onboarding save | **Done** |
+| 6 | `member-votes-db` + `/api/reflection-score` | **Done** |
+| 7 | Dashboard state House/Senate tabs | **Done** (tabs in reflection card) |
 
 ## Environment
 

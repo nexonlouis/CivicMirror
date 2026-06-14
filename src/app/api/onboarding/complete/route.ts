@@ -7,13 +7,17 @@ import { z } from "zod";
 const completeSchema = z.object({
   congressionalDistrict: z.string().min(1),
   state: z.string().min(2).max(2),
+  stateHouseDistrict: z.string().optional().nullable(),
+  stateSenateDistrict: z.string().optional().nullable(),
   ocdDivisionId: z.string().optional().nullable(),
   lookupZip: z.string().optional().nullable(),
   representatives: z.array(
     z.object({
       bioguideId: z.string(),
+      personId: z.string().optional().nullable(),
       fullName: z.string(),
       chamber: z.enum(["house", "senate", "state"]),
+      stateLegislativeChamber: z.enum(["lower", "upper"]).optional().nullable(),
       party: z.string().nullable().optional(),
       photoUrl: z.string().nullable().optional(),
       state: z.string(),
@@ -57,6 +61,8 @@ export async function POST(request: Request) {
     .update({
       congressional_district: congressionalDistrict,
       state,
+      state_house_district: parsed.data.stateHouseDistrict ?? null,
+      state_senate_district: parsed.data.stateSenateDistrict ?? null,
       ocd_division_id: ocdDivisionId,
       lookup_zip: lookupZip,
       onboarding_completed_at: new Date().toISOString(),
@@ -100,8 +106,10 @@ export async function POST(request: Request) {
       representatives.map((r) => ({
         user_id: user.id,
         bioguide_id: r.bioguideId,
+        person_id: r.personId ?? (r.chamber === "state" ? r.bioguideId : null),
         full_name: r.fullName,
         chamber: r.chamber,
+        state_legislative_chamber: r.stateLegislativeChamber ?? null,
         party: r.party ?? null,
         photo_url: r.photoUrl ?? null,
         state: r.state,

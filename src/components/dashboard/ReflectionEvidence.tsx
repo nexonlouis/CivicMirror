@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { getIssueTagLabel } from "@/lib/constants/issue-tags";
 import { congressGovBillTextUrl } from "@/lib/legislation/bill-congress-url";
+import { isStateBillId } from "@/lib/legislators/id-map";
 import { dedupeVotesByBill } from "@/lib/legislation/dedupe-votes-by-bill";
 import {
   alignedFromUserSupports,
@@ -44,7 +45,7 @@ function VoteEvidenceCard({
   const [saving, setSaving] = useState(false);
   const summary = item.summary?.trim();
   const showToggle = summary && summary.length > 220;
-  const billTextUrl = congressGovBillTextUrl(item.billId);
+  const billTextUrl = isStateBillId(item.billId) ? null : congressGovBillTextUrl(item.billId);
   const stance = effectiveStance(item);
 
   const toggleStance = async () => {

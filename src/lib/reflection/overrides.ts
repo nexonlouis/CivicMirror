@@ -1,17 +1,25 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { isStateLegislatorId } from "@/lib/legislators/id-map";
 
 export type AlignmentOverrideMap = Map<string, boolean>;
 
 export async function fetchAlignmentOverrides(
   supabase: SupabaseClient,
   userId: string,
-  bioguideId: string,
+  officialId: string,
 ): Promise<AlignmentOverrideMap> {
-  const { data, error } = await supabase
+  let query = supabase
     .from("user_reflection_overrides")
     .select("bill_id, aligned")
-    .eq("user_id", userId)
-    .eq("bioguide_id", bioguideId.toUpperCase());
+    .eq("user_id", userId);
+
+  if (isStateLegislatorId(officialId)) {
+    query = query.eq("person_id", officialId);
+  } else {
+    query = query.eq("bioguide_id", officialId.toUpperCase());
+  }
+
+  const { data, error } = await query;
 
   if (error) {
     console.error("fetchAlignmentOverrides failed", error.message);
@@ -28,14 +36,16 @@ export async function fetchAlignmentOverrides(
 export async function upsertAlignmentOverride(
   supabase: SupabaseClient,
   userId: string,
-  bioguideId: string,
+  officialId: string,
   billId: string,
   aligned: boolean,
 ): Promise<{ error: string | null }> {
+  const isState = isStateLegislatorId(officialId);
   const { error } = await supabase.from("user_reflection_overrides").upsert(
     {
       user_id: userId,
-      bioguide_id: bioguideId.toUpperCase(),
+      bioguide_id: isState ? officialId : officialId.toUpperCase(),
+      person_id: isState ? officialId : null,
       bill_id: billId,
       aligned,
       updated_at: new Date().toISOString(),
@@ -49,15 +59,22 @@ export async function upsertAlignmentOverride(
 export async function deleteAlignmentOverride(
   supabase: SupabaseClient,
   userId: string,
-  bioguideId: string,
+  officialId: string,
   billId: string,
 ): Promise<{ error: string | null }> {
-  const { error } = await supabase
+  let query = supabase
     .from("user_reflection_overrides")
     .delete()
     .eq("user_id", userId)
-    .eq("bioguide_id", bioguideId.toUpperCase())
     .eq("bill_id", billId);
+
+  if (isStateLegislatorId(officialId)) {
+    query = query.eq("person_id", officialId);
+  } else {
+    query = query.eq("bioguide_id", officialId.toUpperCase());
+  }
+
+  const { error } = await query;
 
   return { error: error?.message ?? null };
 }

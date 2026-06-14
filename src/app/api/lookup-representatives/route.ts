@@ -19,10 +19,13 @@ export async function POST(request: Request) {
     return NextResponse.json({
       congressionalDistrict: result.congressionalDistrict,
       state: result.state,
+      stateHouseDistrict: result.stateHouseDistrict ?? null,
+      stateSenateDistrict: result.stateSenateDistrict ?? null,
       ocdDivisionId: result.ocdDivisionId,
       lookupZip: result.lookupZip,
       representatives: result.representatives,
       source: result.source,
+      stateLegislatorsIncluded: result.stateLegislatorsIncluded ?? false,
       liveData: result.source !== "demo",
     });
   } catch (err) {

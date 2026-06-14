@@ -71,10 +71,13 @@ export function OnboardingWizard() {
       const result: DistrictLookupResult = {
         congressionalDistrict: data.congressionalDistrict,
         state: data.state,
+        stateHouseDistrict: data.stateHouseDistrict ?? null,
+        stateSenateDistrict: data.stateSenateDistrict ?? null,
         ocdDivisionId: data.ocdDivisionId,
         lookupZip: data.lookupZip,
         representatives: data.representatives,
         source: data.source,
+        stateLegislatorsIncluded: data.stateLegislatorsIncluded ?? false,
       };
       setLookup(result);
       setLookupSource(data.source ?? null);
@@ -144,6 +147,8 @@ export function OnboardingWizard() {
         body: JSON.stringify({
           congressionalDistrict: lookup.congressionalDistrict,
           state: lookup.state,
+          stateHouseDistrict: lookup.stateHouseDistrict ?? null,
+          stateSenateDistrict: lookup.stateSenateDistrict ?? null,
           ocdDivisionId: lookup.ocdDivisionId,
           lookupZip: lookup.lookupZip,
           representatives: lookup.representatives,
@@ -205,10 +210,15 @@ export function OnboardingWizard() {
       {step === "demographics" && lookup && (
         <Card>
           <p className="mb-3 text-xs text-emerald-700 dark:text-emerald-400">
-            Found {lookup.representatives.length} officials in district{" "}
-            {lookup.congressionalDistrict}
+            Found {lookup.representatives.length} officials
+            {lookup.congressionalDistrict !== "unassigned"
+              ? ` · Congressional district ${lookup.congressionalDistrict}`
+              : ""}
+            {lookup.stateHouseDistrict || lookup.stateSenateDistrict
+              ? ` · State districts HD ${lookup.stateHouseDistrict ?? "—"} / SD ${lookup.stateSenateDistrict ?? "—"}`
+              : ""}
             {lookupSource && lookupSource !== "demo"
-              ? ` · Live data (${lookupSource})`
+              ? ` · Live data (${lookupSource}${lookup.stateLegislatorsIncluded ? " + Open States" : ""})`
               : ""}
           </p>
           <h2 className="text-xl font-semibold">Calibrate your reflection</h2>

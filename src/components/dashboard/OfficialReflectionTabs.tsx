@@ -7,11 +7,11 @@ import type { ReflectionScoreResult, Representative } from "@/lib/types";
 import type { IssueTagPreference } from "@/lib/types/issue-tags";
 
 function buildReflectionParams(
-  bioguideId: string,
+  officialId: string,
   preferences: IssueTagPreference[],
 ): URLSearchParams {
   const params = new URLSearchParams({
-    bioguideId,
+    bioguideId: officialId,
     tags: preferences.map((p) => p.slug).join(","),
     includeVotes: "1",
   });
@@ -24,15 +24,22 @@ function buildReflectionParams(
   return params;
 }
 
-function sortFederalReps(reps: Representative[]): Representative[] {
+function sortOfficials(reps: Representative[]): Representative[] {
   const chamberOrder = { house: 0, senate: 1, state: 2 };
-  return reps
-    .filter((r) => r.chamber === "house" || r.chamber === "senate")
-    .sort(
-      (a, b) =>
-        chamberOrder[a.chamber] - chamberOrder[b.chamber] ||
-        a.fullName.localeCompare(b.fullName),
-    );
+  const stateChamberOrder = { lower: 0, upper: 1 };
+
+  return [...reps].sort((a, b) => {
+    const chamberDiff = chamberOrder[a.chamber] - chamberOrder[b.chamber];
+    if (chamberDiff !== 0) return chamberDiff;
+
+    if (a.chamber === "state" && b.chamber === "state") {
+      const aState = a.stateLegislativeChamber ? stateChamberOrder[a.stateLegislativeChamber] : 2;
+      const bState = b.stateLegislativeChamber ? stateChamberOrder[b.stateLegislativeChamber] : 2;
+      if (aState !== bState) return aState - bState;
+    }
+
+    return a.fullName.localeCompare(b.fullName);
+  });
 }
 
 function officialTabLabel(rep: Representative): string {
@@ -40,15 +47,33 @@ function officialTabLabel(rep: Representative): string {
     return rep.district ? `House · ${rep.district}` : "House";
   }
 
-  const parts = rep.fullName.trim().split(/\s+/);
-  const lastName = parts[parts.length - 1] ?? rep.fullName;
-  return `Sen. ${lastName}`;
+  if (rep.chamber === "senate") {
+    const parts = rep.fullName.trim().split(/\s+/);
+    const lastName = parts[parts.length - 1] ?? rep.fullName;
+    return `Sen. ${lastName}`;
+  }
+
+  if (rep.stateLegislativeChamber === "upper") {
+    return rep.district ? `SD · ${rep.district}` : "State Senate";
+  }
+
+  return rep.district ? `HD · ${rep.district}` : "State House";
 }
 
 function chamberLabel(rep: Representative): string {
   if (rep.chamber === "house") return "U.S. Representative";
   if (rep.chamber === "senate") return "U.S. Senator";
-  return "Official";
+  if (rep.stateLegislativeChamber === "upper") return "State Senator";
+  if (rep.stateLegislativeChamber === "lower") return "State Representative";
+  return "State Legislator";
+}
+
+function emptyScoreMessage(rep: Representative): string {
+  if (rep.chamber === "state") {
+    return `No scored state roll-call votes yet for ${rep.fullName} on your priority issues. Run scripts/ingest-state and tag-state-bills for their state.`;
+  }
+
+  return `No scored roll-call votes yet for ${rep.fullName} on your priority issues. Run the congress vote ingest or check that Senate roll calls are loaded for this member.`;
 }
 
 interface OfficialReflectionTabsProps {
@@ -62,7 +87,7 @@ export function OfficialReflectionTabs({
   preferences,
   signedIn,
 }: OfficialReflectionTabsProps) {
-  const federalReps = useMemo(() => sortFederalReps(reps), [reps]);
+  const officials = useMemo(() => sortOfficials(reps), [reps]);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [reflections, setReflections] = useState<
     Record<string, ReflectionScoreResult>
@@ -70,7 +95,7 @@ export function OfficialReflectionTabs({
   const [loading, setLoading] = useState(false);
 
   const loadReflections = useCallback(async () => {
-    if (federalReps.length === 0 || preferences.length === 0) {
+    if (officials.length === 0 || preferences.length === 0) {
       setReflections({});
       setActiveId(null);
       return;
@@ -80,7 +105,7 @@ export function OfficialReflectionTabs({
 
     try {
       const entries = await Promise.all(
-        federalReps.map(async (rep) => {
+        officials.map(async (rep) => {
           const params = buildReflectionParams(rep.bioguideId, preferences);
           const response = await fetch(`/api/reflection-score?${params}`);
           const data = (await response.json()) as ReflectionScoreResult;
@@ -92,27 +117,27 @@ export function OfficialReflectionTabs({
       setReflections(next);
       setActiveId((prev) => {
         if (prev && next[prev]) return prev;
-        return federalReps[0]?.bioguideId ?? null;
+        return officials[0]?.bioguideId ?? null;
       });
     } catch {
       setReflections({});
     } finally {
       setLoading(false);
     }
-  }, [federalReps, preferences]);
+  }, [officials, preferences]);
 
   useEffect(() => {
     void loadReflections();
   }, [loadReflections]);
 
-  const activeRep = federalReps.find((r) => r.bioguideId === activeId) ?? null;
+  const activeRep = officials.find((r) => r.bioguideId === activeId) ?? null;
   const reflection = activeId ? reflections[activeId] : undefined;
 
-  if (federalReps.length === 0) {
+  if (officials.length === 0) {
     return (
       <Card>
         <p className="text-sm text-slate-600">
-          Complete onboarding to see reflection scores for your representatives.
+          Complete onboarding to see reflection scores for your officials.
         </p>
       </Card>
     );
@@ -135,7 +160,7 @@ export function OfficialReflectionTabs({
         aria-label="Official reflection scores"
         className="flex gap-1 overflow-x-auto border-b border-slate-200 bg-slate-50 p-2 dark:border-slate-700 dark:bg-slate-900/50"
       >
-        {federalReps.map((rep) => {
+        {officials.map((rep) => {
           const selected = rep.bioguideId === activeId;
           const score = reflections[rep.bioguideId]?.score;
 
@@ -201,9 +226,7 @@ export function OfficialReflectionTabs({
             </p>
             <p className="mt-1 text-xs text-slate-500">{chamberLabel(activeRep)}</p>
             <p className="mt-3 text-sm text-slate-600 dark:text-slate-400">
-              No scored roll-call votes yet for {activeRep.fullName} on your priority
-              issues. Run the congress vote ingest or check that Senate roll calls are
-              loaded for this member.
+              {emptyScoreMessage(activeRep)}
             </p>
           </>
         ) : (

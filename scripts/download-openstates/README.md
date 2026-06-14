@@ -85,5 +85,5 @@ Some states use biennium identifiers (e.g. `20252026`); use `--session` when `--
 ## Next steps
 
 - [ ] `scripts/ingest-state` — CSV → Supabase (`009_state_legislation.sql`)
-- [ ] `scripts/tag-state-bills` — `issue_slugs` for reflection scoring
-- [ ] Address lookup via `people.geo` + dashboard state tabs
+- [x] `scripts/tag-state-bills` — `issue_slugs` for reflection scoring
+- [x] Address lookup via `people.geo` + onboarding save

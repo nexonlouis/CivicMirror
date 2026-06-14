@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
 import { fetchMemberVotesFromDb } from "@/lib/legislation/member-votes-db";
+import { fetchStateMemberVotesFromDb } from "@/lib/legislation/state-member-votes-db";
 import { parsePreferencesFromQuery } from "@/lib/legislation/issue-tag-preferences";
 import { computeReflectionScore } from "@/lib/legislation/reflection-score";
+import { isStateLegislatorId } from "@/lib/legislators/id-map";
 import { fetchAlignmentOverrides } from "@/lib/reflection/overrides";
 import { reflectionQuerySchema } from "@/lib/validation/api";
 import { createClient } from "@/lib/supabase/server";
@@ -17,6 +19,9 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "bioguideId is required" }, { status: 400 });
   }
 
+  const officialId = parsed.data.bioguideId;
+  const isState = isStateLegislatorId(officialId);
+
   const tagsParam = searchParams.get("tags");
   const tags = tagsParam ? tagsParam.split(",").filter(Boolean) : ["healthcare"];
   const preferences = parsePreferencesFromQuery(tags, searchParams);
@@ -29,14 +34,20 @@ export async function GET(request: Request) {
   } = await supabase.auth.getUser();
 
   const alignmentOverrides = user
-    ? await fetchAlignmentOverrides(supabase, user.id, parsed.data.bioguideId)
+    ? await fetchAlignmentOverrides(supabase, user.id, officialId)
     : new Map();
 
-  const votes = await fetchMemberVotesFromDb(parsed.data.bioguideId, {
-    limit: 60,
-    preferences,
-    scoringOnly: true,
-  });
+  const votes = isState
+    ? await fetchStateMemberVotesFromDb(officialId, {
+        limit: 60,
+        preferences,
+        scoringOnly: true,
+      })
+    : await fetchMemberVotesFromDb(officialId, {
+        limit: 60,
+        preferences,
+        scoringOnly: true,
+      });
 
   const result = computeReflectionScore(votes, tagWeights, {
     includeAllVotes: parsed.data.includeVotes ?? true,
@@ -46,6 +57,7 @@ export async function GET(request: Request) {
   return NextResponse.json({
     ...result,
     source: "database",
-    bioguideId: parsed.data.bioguideId,
+    bioguideId: officialId,
+    jurisdiction: isState ? "state" : "federal",
   });
 }

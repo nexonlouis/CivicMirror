@@ -44,8 +44,18 @@ export async function loadLegislatorIdMaps(): Promise<LegislatorIdMaps> {
   return cachedMaps;
 }
 
+export function isStateLegislatorId(id: string): boolean {
+  return id.startsWith("ocd-person/");
+}
+
+export function isStateBillId(id: string): boolean {
+  return id.startsWith("ocd-bill/");
+}
+
 /** IDs that may appear in roll_call_positions for a member (Bioguide + Senate LIS). */
 export async function memberVoteLookupIds(bioguideId: string): Promise<string[]> {
+  if (isStateLegislatorId(bioguideId)) return [bioguideId];
+
   const normalized = bioguideId.toUpperCase();
   try {
     const { bioguideToLis } = await loadLegislatorIdMaps();

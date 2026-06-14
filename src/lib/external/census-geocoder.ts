@@ -7,6 +7,13 @@ export interface CensusDistrictResult {
   lookupZip: string | null;
 }
 
+export interface CensusCoordinatesResult {
+  stateCode: string | null;
+  lat: number;
+  lng: number;
+  lookupZip: string | null;
+}
+
 interface CensusGeoRow {
   BASENAME?: string;
   CD119?: string;
@@ -73,6 +80,56 @@ export async function geocodeCongressionalDistrict(
     };
   } catch (err) {
     console.error("Census geocoder failed", err);
+    return null;
+  }
+}
+
+interface CensusLocationMatch {
+  coordinates?: { x: number; y: number };
+  addressComponents?: { state?: string; zip?: string };
+}
+
+/**
+ * Resolves street address to lat/lng via Census locations geocoder (free, no API key).
+ * Used for Open States people.geo state legislator lookup.
+ */
+export async function geocodeAddressCoordinates(
+  address: string,
+): Promise<CensusCoordinatesResult | null> {
+  const parsed = parseUsAddress(address);
+  const query = parsed?.singleLine ?? address;
+
+  const url = new URL(
+    "https://geocoding.geo.census.gov/geocoder/locations/onelineaddress",
+  );
+  url.searchParams.set("address", query);
+  url.searchParams.set("benchmark", CENSUS_BENCHMARK);
+  url.searchParams.set("format", "json");
+
+  try {
+    const res = await fetch(url.toString(), { next: { revalidate: 86400 } });
+    if (!res.ok) return null;
+
+    const data = (await res.json()) as {
+      result?: { addressMatches?: CensusLocationMatch[] };
+    };
+    const match = data.result?.addressMatches?.[0];
+    const coords = match?.coordinates;
+    if (!coords || coords.x === undefined || coords.y === undefined) return null;
+
+    const stateCode =
+      match.addressComponents?.state?.toUpperCase() ??
+      parsed?.state?.toUpperCase() ??
+      null;
+
+    return {
+      stateCode,
+      lat: coords.y,
+      lng: coords.x,
+      lookupZip: match.addressComponents?.zip ?? parsed?.zip ?? null,
+    };
+  } catch (err) {
+    console.error("Census locations geocoder failed", err);
     return null;
   }
 }

@@ -80,7 +80,9 @@ For **live official lookup** (recommended):
    | `006_vote_scoring_relevant.sql` | Filter procedural votes from scoring |
    | `007_member_votes_bill_summary.sql` | Bill summary on enriched vote view |
    | `008_user_reflection_overrides.sql` | Per-bill alignment overrides (signed-in users) |
-   | `009_state_legislation.sql` | State bills, votes, legislators (Open States ingest) |
+| `009_state_legislation.sql` | State bills, votes, legislators (Open States ingest) |
+   | `010_state_rep_chamber.sql` | `saved_representatives.state_legislative_chamber` |
+   | `011_state_reflection_overrides.sql` | Index for state override lookups |
 
 3. Enable Email auth under Authentication → Providers.
 
@@ -175,7 +177,23 @@ npm install
 npm run ingest -- --state FL --year 2026
 ```
 
-Tagging, API, and dashboard integration are next.
+**Tag** (after ingest):
+
+```bash
+cd scripts/tag-state-bills
+cp config.example.env .env   # reuse Supabase creds from ingest-state
+npm install
+npm run tag:dry -- --state=FL
+npm run tag -- --state=FL --session=2026
+```
+
+See [scripts/tag-state-bills/README.md](scripts/tag-state-bills/README.md).
+
+API lookup and dashboard integration are next.
+
+**Runtime lookup** (onboarding): after federal officials resolve, the app geocodes the address with Census, calls Open States `people.geo`, and saves state House/Senate legislators with `person_id`. Requires `OPENSTATES_PLURAL_API_KEY` in `.env.local`.
+
+**Reflection scores** for state legislators use the same `/api/reflection-score` endpoint (`bioguideId` = `ocd-person/…`) against `state_member_votes_enriched`. Run ingest + tag-state-bills first.
 
 ## Reflection score
 
@@ -285,7 +303,8 @@ Procedural votes are stored but **excluded from reflection scoring** by default 
 | Tag catalog + pro/anti graph | `src/lib/constants/issue-tags.ts` |
 | Graph helpers (sort, highlights) | `src/lib/constants/issue-tag-graph.ts` |
 | Demographic ranking | `src/lib/demographics/suggest-tags.ts` |
-| Bill `issue_slugs` | `scripts/tag-bills` → `bills.issue_slugs` |
+| Bill `issue_slugs` (federal) | `scripts/tag-bills` → `bills.issue_slugs` |
+| Bill `issue_slugs` (state) | `scripts/tag-state-bills` → `state_bills.issue_slugs` |
 | Legacy slug aliases | `src/lib/legislation/bill-tag-aliases.ts` |
 
 ## Privacy model
@@ -303,8 +322,9 @@ data/openstates/             Cached Open States bulk downloads (gitignored)
 public/logo.jpg              App logo + favicon (src/app/icon.jpg)
 scripts/download-openstates/ Open States session CSV + people download
 scripts/ingest-state/         Open States CSV → Supabase state_* tables
+scripts/tag-state-bills/     State bill issue_slugs (subject map)
 scripts/ingest-congress/     unitedstates JSON → Supabase upsert
-scripts/tag-bills/           Bill issue_slugs (subject map + Ollama)
+scripts/tag-bills/           Federal bill issue_slugs (subject map + Ollama)
 src/app/api/                 Next.js API routes
 src/app/profile/             Profile editor page
 src/components/layout/       AppLogo, SiteNav (auth-aware)
