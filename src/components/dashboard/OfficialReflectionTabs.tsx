@@ -80,12 +80,14 @@ interface OfficialReflectionTabsProps {
   reps: Representative[];
   preferences: IssueTagPreference[];
   signedIn: boolean;
+  filterIssueSlugs?: string[];
 }
 
 export function OfficialReflectionTabs({
   reps,
   preferences,
   signedIn,
+  filterIssueSlugs = [],
 }: OfficialReflectionTabsProps) {
   const officials = useMemo(() => sortOfficials(reps), [reps]);
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -216,6 +218,7 @@ export function OfficialReflectionTabs({
                 bioguideId={activeId}
                 signedIn={signedIn}
                 onAlignmentChange={loadReflections}
+                filterIssueSlugs={filterIssueSlugs}
               />
             )}
           </>

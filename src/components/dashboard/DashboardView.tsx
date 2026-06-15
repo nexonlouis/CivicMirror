@@ -5,7 +5,7 @@ import { RepresentativeCard } from "@/components/representatives/RepresentativeC
 import { OfficialReflectionTabs } from "@/components/dashboard/OfficialReflectionTabs";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { getIssueTagLabel } from "@/lib/constants/issue-tags";
+import { IssueTagChipPicker } from "@/components/forum/IssueTagChipPicker";
 import { parseIssueTagWeights } from "@/lib/legislation/issue-tag-preferences";
 import { loadOnboardingDraft } from "@/lib/onboarding/storage";
 import type { Representative } from "@/lib/types";
@@ -18,7 +18,10 @@ export function DashboardView() {
   const [reps, setReps] = useState<Representative[]>([]);
   const [district, setDistrict] = useState<string | null>(null);
   const [preferences, setPreferences] = useState<IssueTagPreference[]>([]);
+  const [filterIssueSlugs, setFilterIssueSlugs] = useState<string[]>([]);
   const [signedIn, setSignedIn] = useState(false);
+
+  const issueSlugs = preferences.map((p) => p.slug);
 
   useEffect(() => {
     async function load() {
@@ -131,27 +134,29 @@ export function DashboardView() {
         )}
       </section>
 
-      <section>
-        <h2 className="mb-3 text-lg font-semibold">Priority issues</h2>
-        {preferences.length === 0 ? (
-          <p className="text-sm text-slate-600">No issues selected yet.</p>
-        ) : (
-          <div className="flex flex-wrap gap-2">
-            {preferences.map((pref) => (
-              <span
-                key={pref.slug}
-                className={`rounded-full px-3 py-1 text-sm ${
-                  pref.stance === "support"
-                    ? "bg-emerald-100 text-emerald-900 dark:bg-emerald-900/30 dark:text-emerald-200"
-                    : "bg-amber-100 text-amber-900 dark:bg-amber-900/30 dark:text-amber-200"
-                }`}
-              >
-                {getIssueTagLabel(pref.slug)} · {pref.stance}
-              </span>
-            ))}
-          </div>
-        )}
-      </section>
+      {issueSlugs.length > 0 ? (
+        <section>
+          <IssueTagChipPicker
+            label="Filter by issue"
+            hint="Select one or more issues. Bills and forum posts matching any selected issue are shown."
+            availableSlugs={issueSlugs}
+            selectedSlugs={filterIssueSlugs}
+            onChange={setFilterIssueSlugs}
+            showAllOption
+          />
+        </section>
+      ) : (
+        <section>
+          <h2 className="mb-3 text-lg font-semibold">Filter by issue</h2>
+          <p className="text-sm text-slate-600">
+            Complete{" "}
+            <Link href="/onboarding" className="underline">
+              onboarding
+            </Link>{" "}
+            to select priority issues and filter bills and forum posts.
+          </p>
+        </section>
+      )}
 
       <section>
         <h2 className="mb-3 text-lg font-semibold">Reflection score</h2>
@@ -159,6 +164,7 @@ export function DashboardView() {
           reps={reps}
           preferences={preferences}
           signedIn={signedIn}
+          filterIssueSlugs={filterIssueSlugs}
         />
       </section>
 
@@ -171,7 +177,9 @@ export function DashboardView() {
         </div>
         <DistrictForum
           compact
-          initialIssueTags={preferences.map((p) => p.slug)}
+          hideIssueFilter
+          filterIssueSlugs={filterIssueSlugs}
+          initialIssueTags={issueSlugs}
         />
       </section>
     </div>

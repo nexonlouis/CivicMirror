@@ -13,6 +13,10 @@ import type { ForumComment, ForumPost } from "@/lib/types/forum";
 interface DistrictForumProps {
   initialIssueTags?: string[];
   compact?: boolean;
+  /** Shared dashboard filter — when set, overrides internal filter state. */
+  filterIssueSlugs?: string[];
+  /** Hide in-component filter UI (dashboard provides a shared filter above). */
+  hideIssueFilter?: boolean;
 }
 
 type PostRow = {
@@ -44,10 +48,13 @@ function profileUsername(profiles: PostRow["profiles"]): string {
 export function DistrictForum({
   initialIssueTags = [],
   compact = false,
+  filterIssueSlugs: filterIssueSlugsProp,
+  hideIssueFilter = false,
 }: DistrictForumProps) {
   const [posts, setPosts] = useState<ForumPost[]>([]);
   const [issueTags, setIssueTags] = useState<string[]>(initialIssueTags);
-  const [filterIssueSlugs, setFilterIssueSlugs] = useState<string[]>([]);
+  const [internalFilterIssueSlugs, setInternalFilterIssueSlugs] = useState<string[]>([]);
+  const filterIssueSlugs = filterIssueSlugsProp ?? internalFilterIssueSlugs;
   const [userId, setUserId] = useState<string | null>(null);
   const [signedIn, setSignedIn] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -362,14 +369,16 @@ export function DistrictForum({
         query.eq("congressional_district", filterDistrict) in loadPosts.
       */}
 
+      {!hideIssueFilter && filterIssueSlugsProp === undefined && (
       <IssueTagChipPicker
         label="Filter by issue"
         hint="Select one or more issues. Posts matching any selected issue are shown."
         availableSlugs={issueTags}
         selectedSlugs={filterIssueSlugs}
-        onChange={setFilterIssueSlugs}
+        onChange={setInternalFilterIssueSlugs}
         showAllOption
       />
+      )}
 
       {error && (
         <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-950 dark:text-red-300">

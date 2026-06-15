@@ -19,6 +19,7 @@ interface ReflectionEvidenceProps {
   bioguideId: string;
   signedIn: boolean;
   onAlignmentChange: () => void | Promise<void>;
+  filterIssueSlugs?: string[];
 }
 
 interface VoteEvidenceCardProps {
@@ -176,6 +177,7 @@ export function ReflectionEvidence({
   bioguideId,
   signedIn,
   onAlignmentChange,
+  filterIssueSlugs = [],
 }: ReflectionEvidenceProps) {
   const [open, setOpen] = useState(false);
   const [filter, setFilter] = useState<Filter>("all");
@@ -183,10 +185,14 @@ export function ReflectionEvidence({
   const uniqueVotes = useMemo(() => dedupeVotesByBill(votes), [votes]);
 
   const filtered = useMemo(() => {
-    if (filter === "aligned") return uniqueVotes.filter((v) => v.aligned);
-    if (filter === "diverged") return uniqueVotes.filter((v) => !v.aligned);
-    return uniqueVotes;
-  }, [uniqueVotes, filter]);
+    let list = uniqueVotes;
+    if (filterIssueSlugs.length > 0) {
+      list = list.filter((v) => filterIssueSlugs.includes(v.issueSlug));
+    }
+    if (filter === "aligned") return list.filter((v) => v.aligned);
+    if (filter === "diverged") return list.filter((v) => !v.aligned);
+    return list;
+  }, [uniqueVotes, filter, filterIssueSlugs]);
 
   if (uniqueVotes.length === 0) return null;
 
@@ -226,15 +232,19 @@ export function ReflectionEvidence({
             ))}
           </div>
           <ul className="space-y-3">
-            {filtered.map((item) => (
-              <VoteEvidenceCard
-                key={item.billId}
-                item={item}
-                bioguideId={bioguideId}
-                signedIn={signedIn}
-                onAlignmentChange={onAlignmentChange}
-              />
-            ))}
+            {filtered.length === 0 ? (
+              <p className="text-sm text-slate-600">No bills match these filters.</p>
+            ) : (
+              filtered.map((item) => (
+                <VoteEvidenceCard
+                  key={item.billId}
+                  item={item}
+                  bioguideId={bioguideId}
+                  signedIn={signedIn}
+                  onAlignmentChange={onAlignmentChange}
+                />
+              ))
+            )}
           </ul>
         </div>
       )}
