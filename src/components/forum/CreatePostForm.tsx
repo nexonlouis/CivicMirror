@@ -1,28 +1,23 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { getIssueTagLabel } from "@/lib/constants/issue-tags";
+import { IssueTagChipPicker } from "@/components/forum/IssueTagChipPicker";
 
 interface CreatePostFormProps {
   issueTags: string[];
-  districtOptions: string[];
-  defaultDistrictTag?: string | null;
   disabled: boolean;
   disabledReason?: string;
   onSubmit: (input: {
     title: string;
     body: string;
-    issueSlug: string | null;
-    districtTag: string | null;
+    issueSlugs: string[];
   }) => Promise<void>;
 }
 
 export function CreatePostForm({
   issueTags,
-  districtOptions,
-  defaultDistrictTag = null,
   disabled,
   disabledReason,
   onSubmit,
@@ -30,16 +25,9 @@ export function CreatePostForm({
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
-  const [issueSlug, setIssueSlug] = useState<string>("");
-  const [districtTag, setDistrictTag] = useState<string>("");
+  const [issueSlugs, setIssueSlugs] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (defaultDistrictTag && defaultDistrictTag !== "unassigned") {
-      setDistrictTag(defaultDistrictTag);
-    }
-  }, [defaultDistrictTag]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -53,13 +41,11 @@ export function CreatePostForm({
       await onSubmit({
         title: title.trim(),
         body: body.trim(),
-        issueSlug: issueSlug || null,
-        districtTag: districtTag || null,
+        issueSlugs,
       });
       setTitle("");
       setBody("");
-      setIssueSlug("");
-      setDistrictTag(defaultDistrictTag && defaultDistrictTag !== "unassigned" ? defaultDistrictTag : "");
+      setIssueSlugs([]);
       setOpen(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not create post");
@@ -102,36 +88,13 @@ export function CreatePostForm({
           onChange={(e) => setBody(e.target.value)}
           maxLength={5000}
         />
-        <label className="block text-sm">
-          District tag (optional)
-          <select
-            className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm dark:border-slate-600 dark:bg-slate-900"
-            value={districtTag}
-            onChange={(e) => setDistrictTag(e.target.value)}
-          >
-            <option value="">No district tag</option>
-            {districtOptions.map((d) => (
-              <option key={d} value={d}>
-                {d}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="block text-sm">
-          Issue tag (optional)
-          <select
-            className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm dark:border-slate-600 dark:bg-slate-900"
-            value={issueSlug}
-            onChange={(e) => setIssueSlug(e.target.value)}
-          >
-            <option value="">General</option>
-            {issueTags.map((slug) => (
-              <option key={slug} value={slug}>
-                {getIssueTagLabel(slug)}
-              </option>
-            ))}
-          </select>
-        </label>
+        <IssueTagChipPicker
+          label="Issue tags (optional)"
+          hint="Select one or more issues for this discussion."
+          availableSlugs={issueTags}
+          selectedSlugs={issueSlugs}
+          onChange={setIssueSlugs}
+        />
         {error && <p className="text-sm text-red-600">{error}</p>}
         <div className="flex gap-2">
           <Button type="submit" disabled={loading}>

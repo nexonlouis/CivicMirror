@@ -4,13 +4,13 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { aggregateVotes, type VoteRow } from "@/lib/forum/aggregate-votes";
+import { isPostEdited } from "@/lib/forum/post-edited";
 import { CreatePostForm } from "@/components/forum/CreatePostForm";
+import { IssueTagChipPicker } from "@/components/forum/IssueTagChipPicker";
 import { PostCard } from "@/components/forum/PostCard";
 import type { ForumComment, ForumPost } from "@/lib/types/forum";
 
 interface DistrictForumProps {
-  /** When embedded on dashboard, default the district filter to this value */
-  initialDistrict?: string | null;
   initialIssueTags?: string[];
   compact?: boolean;
 }
@@ -19,9 +19,9 @@ type PostRow = {
   id: string;
   title: string;
   body: string;
-  issue_slug: string | null;
-  congressional_district: string | null;
+  issue_slugs: string[];
   created_at: string;
+  updated_at: string;
   author_id: string;
   profiles: { username: string } | { username: string }[] | null;
 };
@@ -41,27 +41,13 @@ function profileUsername(profiles: PostRow["profiles"]): string {
   return profiles.username;
 }
 
-function uniqueSortedDistricts(...items: (string | null | undefined)[]): string[] {
-  const set = new Set<string>();
-  for (const d of items) {
-    if (d && d !== "unassigned") set.add(d);
-  }
-  return [...set].sort();
-}
-
 export function DistrictForum({
-  initialDistrict = null,
   initialIssueTags = [],
   compact = false,
 }: DistrictForumProps) {
   const [posts, setPosts] = useState<ForumPost[]>([]);
-  const [userDistrict, setUserDistrict] = useState<string | null>(initialDistrict);
-  const [districtOptions, setDistrictOptions] = useState<string[]>([]);
   const [issueTags, setIssueTags] = useState<string[]>(initialIssueTags);
-  const [filterSlug, setFilterSlug] = useState<string | "all">("all");
-  const [filterDistrict, setFilterDistrict] = useState<string | "all">(
-    initialDistrict && initialDistrict !== "unassigned" ? initialDistrict : "all",
-  );
+  const [filterIssueSlugs, setFilterIssueSlugs] = useState<string[]>([]);
   const [userId, setUserId] = useState<string | null>(null);
   const [signedIn, setSignedIn] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -70,12 +56,8 @@ export function DistrictForum({
   const canParticipate = signedIn;
 
   useEffect(() => {
-    if (initialDistrict) setUserDistrict(initialDistrict);
     if (initialIssueTags.length > 0) setIssueTags(initialIssueTags);
-    if (initialDistrict && initialDistrict !== "unassigned") {
-      setFilterDistrict(initialDistrict);
-    }
-  }, [initialDistrict, initialIssueTags]);
+  }, [initialIssueTags]);
 
   useEffect(() => {
     async function loadProfile() {
@@ -86,17 +68,6 @@ export function DistrictForum({
       setSignedIn(!!user);
       setUserId(user?.id ?? null);
       if (!user) return;
-
-      if (!initialDistrict) {
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("congressional_district")
-          .eq("id", user.id)
-          .single();
-        if (profile?.congressional_district) {
-          setUserDistrict(profile.congressional_district);
-        }
-      }
 
       if (initialIssueTags.length === 0) {
         const { data: demo } = await supabase
@@ -110,21 +81,7 @@ export function DistrictForum({
       }
     }
     void loadProfile();
-  }, [initialDistrict, initialIssueTags]);
-
-  const loadDistrictOptions = useCallback(async () => {
-    const supabase = createClient();
-    const { data } = await supabase
-      .from("district_posts")
-      .select("congressional_district")
-      .not("congressional_district", "is", null)
-      .limit(500);
-
-    const fromPosts = (data ?? []).map(
-      (row) => (row as { congressional_district: string }).congressional_district,
-    );
-    setDistrictOptions(uniqueSortedDistricts(...fromPosts, userDistrict));
-  }, [userDistrict]);
+  }, [initialIssueTags]);
 
   const loadPosts = useCallback(async () => {
     const supabase = createClient();
@@ -135,17 +92,19 @@ export function DistrictForum({
     let query = supabase
       .from("district_posts")
       .select(
-        "id, title, body, issue_slug, congressional_district, created_at, author_id, profiles(username)",
+        "id, title, body, issue_slugs, created_at, updated_at, author_id, profiles(username)",
       )
       .order("created_at", { ascending: false })
       .limit(50);
 
-    if (filterSlug !== "all") {
-      query = query.eq("issue_slug", filterSlug);
+    if (filterIssueSlugs.length > 0) {
+      query = query.overlaps("issue_slugs", filterIssueSlugs);
     }
-    if (filterDistrict !== "all") {
-      query = query.eq("congressional_district", filterDistrict);
-    }
+    // District list filter removed — shared interests matter more than locality.
+    // To restore: track filterDistrict state ("all" | district) and apply:
+    // if (filterDistrict !== "all") {
+    //   query = query.eq("congressional_district", filterDistrict);
+    // }
 
     const { data: postRows, error: postsError } = await query;
 
@@ -185,9 +144,10 @@ export function DistrictForum({
         id: p.id,
         title: p.title,
         body: p.body,
-        issueSlug: p.issue_slug,
-        districtTag: p.congressional_district,
+        issueSlugs: p.issue_slugs ?? [],
         createdAt: p.created_at,
+        updatedAt: p.updated_at,
+        edited: isPostEdited(p.created_at, p.updated_at),
         authorId: p.author_id,
         authorUsername: profileUsername(p.profiles),
         score: v?.score ?? 0,
@@ -197,11 +157,7 @@ export function DistrictForum({
     });
 
     setPosts(mapped);
-  }, [filterDistrict, filterSlug]);
-
-  useEffect(() => {
-    void loadDistrictOptions();
-  }, [loadDistrictOptions]);
+  }, [filterIssueSlugs]);
 
   useEffect(() => {
     setLoading(true);
@@ -222,7 +178,6 @@ export function DistrictForum({
         { event: "*", schema: "public", table: "district_posts" },
         () => {
           void loadPosts();
-          void loadDistrictOptions();
         },
       )
       .on(
@@ -244,28 +199,64 @@ export function DistrictForum({
     return () => {
       void supabase.removeChannel(channel);
     };
-  }, [signedIn, loadPosts, loadDistrictOptions]);
+  }, [signedIn, loadPosts]);
 
   const createPost = async (input: {
     title: string;
     body: string;
-    issueSlug: string | null;
-    districtTag: string | null;
+    issueSlugs: string[];
   }) => {
     if (!userId) throw new Error("Sign in to post");
 
     const supabase = createClient();
     const { error: insertError } = await supabase.from("district_posts").insert({
       author_id: userId,
-      congressional_district: input.districtTag,
       title: input.title,
       body: input.body,
-      issue_slug: input.issueSlug,
+      issue_slugs: input.issueSlugs,
     });
 
     if (insertError) throw new Error(insertError.message);
     await loadPosts();
-    await loadDistrictOptions();
+  };
+
+  const editPost = async (
+    postId: string,
+    input: {
+      title: string;
+      body: string;
+      issueSlugs: string[];
+    },
+  ) => {
+    if (!userId) throw new Error("Sign in to edit");
+
+    const supabase = createClient();
+    const { error: updateError } = await supabase
+      .from("district_posts")
+      .update({
+        title: input.title,
+        body: input.body,
+        issue_slugs: input.issueSlugs,
+      })
+      .eq("id", postId)
+      .eq("author_id", userId);
+
+    if (updateError) throw new Error(updateError.message);
+    await loadPosts();
+  };
+
+  const deletePost = async (postId: string) => {
+    if (!userId) throw new Error("Sign in to delete");
+
+    const supabase = createClient();
+    const { error: deleteError } = await supabase
+      .from("district_posts")
+      .delete()
+      .eq("id", postId)
+      .eq("author_id", userId);
+
+    if (deleteError) throw new Error(deleteError.message);
+    await loadPosts();
   };
 
   const handleVote = async (postId: string, direction: 1 | -1) => {
@@ -336,17 +327,15 @@ export function DistrictForum({
 
   const disabledReason = !signedIn ? "Sign in to post in the forum." : undefined;
 
-  const postDistrictOptions = uniqueSortedDistricts(...districtOptions, userDistrict);
-
   return (
     <div className={compact ? "space-y-4" : "space-y-6"}>
       {!compact && (
         <div>
           <h2 className="text-2xl font-bold tracking-tight">Community forum</h2>
           <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
-            Discuss civic issues with neighbors across CivicMirror. Add an optional
-            district tag to focus a thread, or filter posts by district below. Only
-            your username is visible — never your address or demographics.
+            Discuss civic issues with neighbors across CivicMirror. Add optional
+            issue tags to focus a thread. Only your username is visible — never your
+            address or demographics.
           </p>
         </div>
       )}
@@ -362,58 +351,25 @@ export function DistrictForum({
 
       <CreatePostForm
         issueTags={issueTags}
-        districtOptions={postDistrictOptions}
-        defaultDistrictTag={userDistrict}
         disabled={!canParticipate}
         disabledReason={disabledReason}
         onSubmit={createPost}
       />
 
-      {(postDistrictOptions.length > 0 || filterDistrict !== "all") && (
-        <div>
-          <p className="mb-2 text-xs font-medium uppercase tracking-wide text-slate-500">
-            Filter by district
-          </p>
-          <div className="flex flex-wrap gap-2">
-            <FilterChip
-              active={filterDistrict === "all"}
-              label="All districts"
-              onClick={() => setFilterDistrict("all")}
-            />
-            {postDistrictOptions.map((d) => (
-              <FilterChip
-                key={d}
-                active={filterDistrict === d}
-                label={d}
-                onClick={() => setFilterDistrict(d)}
-              />
-            ))}
-          </div>
-        </div>
-      )}
+      {/*
+        District filter UI removed — users connect on shared issues more than locality.
+        To restore: add filterDistrict state ("all" | district), chip row, and
+        query.eq("congressional_district", filterDistrict) in loadPosts.
+      */}
 
-      {issueTags.length > 0 && (
-        <div>
-          <p className="mb-2 text-xs font-medium uppercase tracking-wide text-slate-500">
-            Filter by issue
-          </p>
-          <div className="flex flex-wrap gap-2">
-            <FilterChip
-              active={filterSlug === "all"}
-              label="All issues"
-              onClick={() => setFilterSlug("all")}
-            />
-            {issueTags.map((slug) => (
-              <FilterChip
-                key={slug}
-                active={filterSlug === slug}
-                label={slug.replace(/-/g, " ")}
-                onClick={() => setFilterSlug(slug)}
-              />
-            ))}
-          </div>
-        </div>
-      )}
+      <IssueTagChipPicker
+        label="Filter by issue"
+        hint="Select one or more issues. Posts matching any selected issue are shown."
+        availableSlugs={issueTags}
+        selectedSlugs={filterIssueSlugs}
+        onChange={setFilterIssueSlugs}
+        showAllOption
+      />
 
       {error && (
         <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-950 dark:text-red-300">
@@ -428,7 +384,7 @@ export function DistrictForum({
         <p className="text-sm text-slate-500">Loading discussions…</p>
       ) : posts.length === 0 ? (
         <p className="text-sm text-slate-600">
-          {filterDistrict !== "all" || filterSlug !== "all"
+          {filterIssueSlugs.length > 0
             ? "No posts match these filters."
             : "No posts yet. Be the first to start a conversation."}
         </p>
@@ -439,38 +395,18 @@ export function DistrictForum({
               <PostCard
                 post={post}
                 signedIn={signedIn}
+                currentUserId={userId}
+                issueTags={issueTags}
                 onVote={handleVote}
                 onLoadComments={loadComments}
                 onAddComment={addComment}
+                onEditPost={editPost}
+                onDeletePost={deletePost}
               />
             </li>
           ))}
         </ul>
       )}
     </div>
-  );
-}
-
-function FilterChip({
-  label,
-  active,
-  onClick,
-}: {
-  label: string;
-  active: boolean;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`rounded-full px-3 py-1 text-sm capitalize transition-colors ${
-        active
-          ? "bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900"
-          : "border border-slate-300 bg-white text-slate-700 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200"
-      }`}
-    >
-      {label}
-    </button>
   );
 }

@@ -2,10 +2,10 @@ export interface ForumPost {
   id: string;
   title: string;
   body: string;
-  issueSlug: string | null;
-  /** Optional congressional district tag (e.g. MI-12), not a visibility gate. */
-  districtTag: string | null;
+  issueSlugs: string[];
   createdAt: string;
+  updatedAt: string;
+  edited: boolean;
   authorId: string;
   authorUsername: string;
   score: number;

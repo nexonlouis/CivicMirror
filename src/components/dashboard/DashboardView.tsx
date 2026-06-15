@@ -171,7 +171,6 @@ export function DashboardView() {
         </div>
         <DistrictForum
           compact
-          initialDistrict={district}
           initialIssueTags={preferences.map((p) => p.slug)}
         />
       </section>
