@@ -1,23 +1,28 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { getIssueTagLabel } from "@/lib/constants/issue-tags";
 
 interface CreatePostFormProps {
   issueTags: string[];
+  districtOptions: string[];
+  defaultDistrictTag?: string | null;
   disabled: boolean;
   disabledReason?: string;
   onSubmit: (input: {
     title: string;
     body: string;
     issueSlug: string | null;
+    districtTag: string | null;
   }) => Promise<void>;
 }
 
 export function CreatePostForm({
   issueTags,
+  districtOptions,
+  defaultDistrictTag = null,
   disabled,
   disabledReason,
   onSubmit,
@@ -26,8 +31,15 @@ export function CreatePostForm({
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
   const [issueSlug, setIssueSlug] = useState<string>("");
+  const [districtTag, setDistrictTag] = useState<string>("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (defaultDistrictTag && defaultDistrictTag !== "unassigned") {
+      setDistrictTag(defaultDistrictTag);
+    }
+  }, [defaultDistrictTag]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -42,10 +54,12 @@ export function CreatePostForm({
         title: title.trim(),
         body: body.trim(),
         issueSlug: issueSlug || null,
+        districtTag: districtTag || null,
       });
       setTitle("");
       setBody("");
       setIssueSlug("");
+      setDistrictTag(defaultDistrictTag && defaultDistrictTag !== "unassigned" ? defaultDistrictTag : "");
       setOpen(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not create post");
@@ -82,12 +96,27 @@ export function CreatePostForm({
         />
         <textarea
           className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm dark:border-slate-600 dark:bg-slate-900"
-          placeholder="What do you want to discuss with neighbors in your district?"
+          placeholder="What do you want to discuss?"
           rows={4}
           value={body}
           onChange={(e) => setBody(e.target.value)}
           maxLength={5000}
         />
+        <label className="block text-sm">
+          District tag (optional)
+          <select
+            className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm dark:border-slate-600 dark:bg-slate-900"
+            value={districtTag}
+            onChange={(e) => setDistrictTag(e.target.value)}
+          >
+            <option value="">No district tag</option>
+            {districtOptions.map((d) => (
+              <option key={d} value={d}>
+                {d}
+              </option>
+            ))}
+          </select>
+        </label>
         <label className="block text-sm">
           Issue tag (optional)
           <select

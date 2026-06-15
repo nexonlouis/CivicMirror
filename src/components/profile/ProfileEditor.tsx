@@ -150,7 +150,7 @@ export function ProfileEditor() {
       <Card>
         <h2 className="text-lg font-semibold">Forum username</h2>
         <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
-          Shown on district forum posts and comments.
+          Shown on forum posts and comments.
         </p>
         <label className="mt-4 block text-sm">
           Username

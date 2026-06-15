@@ -164,7 +164,7 @@ export function DashboardView() {
 
       <section>
         <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-lg font-semibold">District forum</h2>
+          <h2 className="text-lg font-semibold">Community forum</h2>
           <Link href="/forum" className="text-sm text-slate-600 underline">
             Open full forum
           </Link>

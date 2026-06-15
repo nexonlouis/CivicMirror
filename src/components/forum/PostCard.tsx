@@ -97,6 +97,14 @@ export function PostCard({
             </span>
             <span>·</span>
             <time dateTime={post.createdAt}>{formatRelativeTime(post.createdAt)}</time>
+            {post.districtTag && (
+              <>
+                <span>·</span>
+                <span className="rounded-full bg-blue-50 px-2 py-0.5 text-blue-800 dark:bg-blue-950 dark:text-blue-200">
+                  {post.districtTag}
+                </span>
+              </>
+            )}
             {post.issueSlug && (
               <>
                 <span>·</span>
